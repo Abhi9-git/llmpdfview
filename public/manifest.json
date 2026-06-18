@@ -9,9 +9,12 @@
   ],
   "host_permissions": [
     "https://chatgpt.com/*",
+    "https://*.chatgpt.com/*",
     "https://claude.ai/*",
+    "https://*.claude.ai/*",
     "https://gemini.google.com/*",
-    "https://perplexity.ai/*"
+    "https://perplexity.ai/*",
+    "https://www.perplexity.ai/*"
   ],
   "action": {
     "default_popup": "index.html",
@@ -21,17 +24,17 @@
     {
       "matches": [
         "https://chatgpt.com/*",
+        "https://*.chatgpt.com/*",
         "https://claude.ai/*",
+        "https://*.claude.ai/*",
         "https://gemini.google.com/*",
-        "https://perplexity.ai/*"
+        "https://perplexity.ai/*",
+        "https://www.perplexity.ai/*"
       ],
       "js": [
         "content.js"
       ],
-      "css": [
-        "content.css"
-      ],
-      "run_at": "document_end"
+      "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
@@ -42,9 +45,12 @@
       ],
       "matches": [
         "https://chatgpt.com/*",
+        "https://*.chatgpt.com/*",
         "https://claude.ai/*",
+        "https://*.claude.ai/*",
         "https://gemini.google.com/*",
-        "https://perplexity.ai/*"
+        "https://perplexity.ai/*",
+        "https://www.perplexity.ai/*"
       ]
     }
   ]
