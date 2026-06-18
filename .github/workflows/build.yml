@@ -1,0 +1,43 @@
+name: Build & Package Extension
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-size: 20
+        cache: 'npm'
+
+    - name: Install Dependencies
+      run: npm ci --ignore-scripts
+
+    - name: Run Linter
+      run: npm run lint
+
+    - name: Build Extension
+      run: npm run build
+
+    - name: Package Extension as Zip
+      run: |
+        cd dist
+        zip -r ../llmpdfview-extension.zip *
+        cd ..
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: llmpdfview-extension-zip
+        path: llmpdfview-extension.zip
+        retention-days: 7

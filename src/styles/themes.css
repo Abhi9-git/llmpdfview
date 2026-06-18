@@ -1,0 +1,46 @@
+/* Global Theme Variables */
+
+.theme-light {
+  --bg-color: #f5f5f7;
+  --paper-color: #ffffff;
+  --text-primary: #1d1d1f;
+  --text-secondary: #515154;
+  --border-color: #e5e5e7;
+  --toolbar-bg: rgba(255, 255, 255, 0.85);
+  --toolbar-border: #d2d2d7;
+  --accent-color: #0071e3;
+  --accent-hover: #0077ed;
+  --code-bg: #f5f5f7;
+  --code-text: #d63384;
+  --shadow-color: rgba(0, 0, 0, 0.08);
+}
+
+.theme-dark {
+  --bg-color: #121212;
+  --paper-color: #1c1c1e;
+  --text-primary: #f5f5f7;
+  --text-secondary: #86868b;
+  --border-color: #2c2c2e;
+  --toolbar-bg: rgba(28, 28, 30, 0.85);
+  --toolbar-border: #3a3a3c;
+  --accent-color: #2997ff;
+  --accent-hover: #47a5ff;
+  --code-bg: #2c2c2e;
+  --code-text: #ff79c6;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+}
+
+.theme-sepia {
+  --bg-color: #f4ecd8;
+  --paper-color: #fbf0d9;
+  --text-primary: #433422;
+  --text-secondary: #5c4b37;
+  --border-color: #e4d3b1;
+  --toolbar-bg: rgba(235, 220, 185, 0.85);
+  --toolbar-border: #d8c397;
+  --accent-color: #8c6239;
+  --accent-hover: #a17243;
+  --code-bg: #ebdcb9;
+  --code-text: #b85c00;
+  --shadow-color: rgba(67, 52, 34, 0.1);
+}

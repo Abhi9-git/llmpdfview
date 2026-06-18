@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "LLM PDF View",
+  "version": "1.0.0",
+  "description": "Convert ChatGPT, Claude, Gemini, and Perplexity chats into a clean PDF-style reading experience.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://perplexity.ai/*"
+  ],
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "LLM PDF View"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://perplexity.ai/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content.css",
+        "assets/*"
+      ],
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://perplexity.ai/*"
+      ]
+    }
+  ]
+}
