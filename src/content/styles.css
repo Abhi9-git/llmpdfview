@@ -499,7 +499,7 @@ pre[class*="language-"] {
    Images & Media
    ========================================================================== */
 .chat-image {
-  max-width: 100%;
+  max-width: 50%;
   height: auto;
   border-radius: 10px;
   border: 1px solid var(--border-color);
