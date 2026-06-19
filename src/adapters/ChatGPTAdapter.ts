@@ -1,5 +1,5 @@
 import type { ChatAdapter, Message } from '../types';
-import { elementToMarkdown } from './utils';
+import { elementToMarkdown, extractMedia } from './utils';
 
 export class ChatGPTAdapter implements ChatAdapter {
   detect(): boolean {
@@ -16,11 +16,13 @@ export class ChatGPTAdapter implements ChatAdapter {
         // Find inside container or markdown content inside ChatGPT turns if applicable
         const contentContainer = el.querySelector('.markdown, .prose') || el;
         const content = elementToMarkdown(contentContainer);
+        const media = extractMedia(el);
 
-        if (content) {
+        if (content || media.length > 0) {
           messages.push({
             role: roleAttr,
             content,
+            ...(media.length > 0 ? { media } : {}),
           });
         }
       }

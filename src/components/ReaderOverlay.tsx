@@ -153,7 +153,7 @@ export const ReaderOverlay: React.FC<ReaderOverlayProps> = ({ onClose }) => {
                   <span className="message-header-icon"></span>
                   {msg.role === 'user' ? 'User' : 'Assistant'}
                 </div>
-                <MarkdownRenderer content={msg.content} />
+                <MarkdownRenderer content={msg.content} media={msg.media} />
               </div>
             ))}
           </div>

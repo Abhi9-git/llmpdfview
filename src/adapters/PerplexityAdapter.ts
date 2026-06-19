@@ -1,5 +1,5 @@
 import type { ChatAdapter, Message } from '../types';
-import { elementToMarkdown } from './utils';
+import { elementToMarkdown, extractMedia } from './utils';
 
 export class PerplexityAdapter implements ChatAdapter {
   detect(): boolean {
@@ -18,7 +18,7 @@ export class PerplexityAdapter implements ChatAdapter {
     const messages: Message[] = [];
 
     elements.forEach((el) => {
-      const className = el.className.toLowerCase();
+      const className = (typeof el.className === 'string' ? el.className : '').toLowerCase();
       
       const isUser = 
         className.includes('query') || 
@@ -26,11 +26,13 @@ export class PerplexityAdapter implements ChatAdapter {
       
       const role = isUser ? 'user' : 'assistant';
       const content = elementToMarkdown(el);
+      const media = extractMedia(el);
 
-      if (content) {
+      if (content || media.length > 0) {
         messages.push({
           role,
           content,
+          ...(media.length > 0 ? { media } : {}),
         });
       }
     });

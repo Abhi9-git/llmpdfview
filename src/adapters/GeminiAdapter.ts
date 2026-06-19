@@ -1,5 +1,5 @@
 import type { ChatAdapter, Message } from '../types';
-import { elementToMarkdown } from './utils';
+import { elementToMarkdown, extractMedia } from './utils';
 
 export class GeminiAdapter implements ChatAdapter {
   detect(): boolean {
@@ -41,8 +41,9 @@ export class GeminiAdapter implements ChatAdapter {
 
       const role = isUser ? 'user' : 'assistant';
       const content = elementToMarkdown(el);
+      const media = extractMedia(el);
 
-      if (content) {
+      if (content || media.length > 0) {
         // Skip if this is a consecutive message with the same role and identical content
         const last = messages[messages.length - 1];
         if (last && last.role === role && last.content === content) return;
@@ -50,6 +51,7 @@ export class GeminiAdapter implements ChatAdapter {
         messages.push({
           role,
           content,
+          ...(media.length > 0 ? { media } : {}),
         });
       }
     });

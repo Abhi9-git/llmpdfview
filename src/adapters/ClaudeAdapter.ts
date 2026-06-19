@@ -1,5 +1,5 @@
 import type { ChatAdapter, Message } from '../types';
-import { elementToMarkdown } from './utils';
+import { elementToMarkdown, extractMedia } from './utils';
 
 export class ClaudeAdapter implements ChatAdapter {
   detect(): boolean {
@@ -27,11 +27,13 @@ export class ClaudeAdapter implements ChatAdapter {
       
       const role = isUser ? 'user' : 'assistant';
       const content = elementToMarkdown(el);
+      const media = extractMedia(el);
 
-      if (content) {
+      if (content || media.length > 0) {
         messages.push({
           role,
           content,
+          ...(media.length > 0 ? { media } : {}),
         });
       }
     });

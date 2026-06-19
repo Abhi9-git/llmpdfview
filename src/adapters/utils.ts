@@ -1,3 +1,10 @@
+import type { MessageMedia } from '../types';
+
+/**
+ * Convert a DOM element tree to Markdown text.
+ * Now also converts <img> elements to markdown image syntax
+ * and <svg> elements to inline data-URI images.
+ */
 export function elementToMarkdown(element: Element): string {
   const traverse = (node: Node): string => {
     if (node.nodeType === Node.TEXT_NODE) {
@@ -11,15 +18,39 @@ export function elementToMarkdown(element: Element): string {
     const el = node as Element;
     const tagName = el.tagName.toUpperCase();
 
-    // Skip utility elements (buttons, icons, toolbars, SVGs, etc.)
+    // Skip utility elements (buttons, icons, toolbars, etc.)
     if (
       tagName === 'BUTTON' ||
-      tagName === 'SVG' ||
       tagName === 'STYLE' ||
       tagName === 'SCRIPT' ||
       el.classList.contains('sr-only') ||
       el.getAttribute('aria-hidden') === 'true'
     ) {
+      return '';
+    }
+
+    // --- IMAGE HANDLING ---
+    if (tagName === 'IMG') {
+      const src = (el as HTMLImageElement).src;
+      const alt = (el as HTMLImageElement).alt || 'image';
+      if (src) {
+        return `\n\n![${alt}](${src})\n\n`;
+      }
+      return '';
+    }
+
+    // --- SVG HANDLING ---
+    if (tagName === 'SVG') {
+      return svgToMarkdownImage(el);
+    }
+
+    // --- MERMAID DIAGRAM HANDLING ---
+    // Detect mermaid containers: <pre class="mermaid">, <div class="mermaid">, etc.
+    if (isMermaidElement(el)) {
+      const mermaidSource = el.textContent?.trim() || '';
+      if (mermaidSource) {
+        return `\n\n\`\`\`mermaid\n${mermaidSource}\n\`\`\`\n\n`;
+      }
       return '';
     }
 
@@ -38,6 +69,35 @@ export function elementToMarkdown(element: Element): string {
 
     if (tagName === 'CODE') {
       return `\`${el.textContent}\``;
+    }
+
+    // --- PICTURE / FIGURE HANDLING ---
+    // <picture> and <figure> elements can wrap <img> tags
+    if (tagName === 'PICTURE') {
+      const img = el.querySelector('img');
+      if (img) {
+        return traverse(img);
+      }
+      return '';
+    }
+
+    if (tagName === 'FIGURE') {
+      let result = '';
+      const img = el.querySelector('img');
+      const svg = el.querySelector('svg');
+      const figcaption = el.querySelector('figcaption');
+
+      if (img) {
+        const src = img.src;
+        const alt = figcaption?.textContent?.trim() || img.alt || 'image';
+        if (src) {
+          result += `\n\n![${alt}](${src})\n\n`;
+        }
+      } else if (svg) {
+        result += svgToMarkdownImage(svg);
+      }
+
+      return result;
     }
 
     // Process children first
@@ -99,6 +159,101 @@ export function elementToMarkdown(element: Element): string {
   return traverse(element)
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+/**
+ * Extract all images and SVG diagrams from a DOM element.
+ * Returns structured MessageMedia[] for standalone rendering.
+ */
+export function extractMedia(element: Element): MessageMedia[] {
+  const media: MessageMedia[] = [];
+  const seen = new Set<string>();
+
+  // Extract all <img> elements
+  const images = element.querySelectorAll('img');
+  images.forEach((img) => {
+    const src = img.src;
+    if (!src || seen.has(src)) return;
+
+    // Skip tiny tracking pixels and icons (< 32px)
+    const width = img.naturalWidth || img.width || parseInt(img.getAttribute('width') || '0', 10);
+    const height = img.naturalHeight || img.height || parseInt(img.getAttribute('height') || '0', 10);
+    if ((width > 0 && width < 32) || (height > 0 && height < 32)) return;
+
+    seen.add(src);
+    media.push({
+      type: 'image',
+      src,
+      alt: img.alt || 'Image',
+    });
+  });
+
+  // Extract all <svg> elements that look like diagrams (not tiny icons)
+  const svgs = element.querySelectorAll('svg');
+  svgs.forEach((svg) => {
+    // Skip small icon-sized SVGs
+    const viewBox = svg.getAttribute('viewBox');
+    const width = svg.getAttribute('width');
+    const height = svg.getAttribute('height');
+
+    const isLikelySvgIcon =
+      (width && parseInt(width, 10) < 32) ||
+      (height && parseInt(height, 10) < 32) ||
+      (!viewBox && !width && !height && svg.children.length < 3);
+
+    if (isLikelySvgIcon) return;
+
+    const svgMarkup = new XMLSerializer().serializeToString(svg);
+    const dataUri = svgToDataUri(svgMarkup);
+    if (seen.has(dataUri)) return;
+
+    seen.add(dataUri);
+    media.push({
+      type: 'svg',
+      src: dataUri,
+      alt: svg.getAttribute('aria-label') || 'Diagram',
+      svgMarkup,
+    });
+  });
+
+  return media;
+}
+
+/**
+ * Convert an SVG element to a markdown image with a data URI.
+ */
+function svgToMarkdownImage(svgEl: Element): string {
+  // Skip small icon SVGs
+  const width = svgEl.getAttribute('width');
+  const height = svgEl.getAttribute('height');
+  if ((width && parseInt(width, 10) < 32) || (height && parseInt(height, 10) < 32)) {
+    return '';
+  }
+
+  const svgMarkup = new XMLSerializer().serializeToString(svgEl);
+  const dataUri = svgToDataUri(svgMarkup);
+  const alt = svgEl.getAttribute('aria-label') || 'diagram';
+  return `\n\n![${alt}](${dataUri})\n\n`;
+}
+
+/**
+ * Convert raw SVG markup string to a base64 data URI.
+ */
+function svgToDataUri(svgMarkup: string): string {
+  const encoded = btoa(unescape(encodeURIComponent(svgMarkup)));
+  return `data:image/svg+xml;base64,${encoded}`;
+}
+
+/**
+ * Check if an element is a Mermaid diagram container.
+ */
+function isMermaidElement(el: Element): boolean {
+  const className = typeof el.className === 'string' ? el.className : '';
+  return (
+    className.includes('mermaid') ||
+    el.getAttribute('data-mermaid') !== null ||
+    (el.tagName.toUpperCase() === 'PRE' && el.querySelector('.mermaid') !== null)
+  );
 }
 
 function parseTable(table: Element): string {

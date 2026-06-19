@@ -2,6 +2,32 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
 /**
+ * Wait for all images within an element to finish loading.
+ * Returns a promise that resolves when all images are ready,
+ * with a timeout to avoid infinite hangs on broken images.
+ */
+function waitForImages(element: HTMLElement, timeoutMs: number = 5000): Promise<void> {
+  const images = Array.from(element.querySelectorAll('img'));
+  if (images.length === 0) return Promise.resolve();
+
+  const imagePromises = images.map((img) => {
+    if (img.complete && img.naturalWidth > 0) {
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve) => {
+      img.addEventListener('load', () => resolve(), { once: true });
+      img.addEventListener('error', () => resolve(), { once: true });
+    });
+  });
+
+  // Race against a timeout so we don't wait forever for broken images
+  return Promise.race([
+    Promise.all(imagePromises).then(() => {}),
+    new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
+  ]);
+}
+
+/**
  * Exports a target DOM element to a multi-page PDF.
  * @param element The DOM element to capture.
  * @param filename The name of the saved PDF file.
@@ -10,6 +36,9 @@ export async function exportToPDF(element: HTMLElement, filename: string = 'llm-
   if (!element) {
     throw new Error('No element provided for PDF export');
   }
+
+  // Wait for all images to load before capturing
+  await waitForImages(element);
 
   // Store original style adjustments to restore them later
   const originalWidth = element.style.width;
@@ -26,6 +55,7 @@ export async function exportToPDF(element: HTMLElement, filename: string = 'llm-
     const canvas = await html2canvas(element, {
       scale: 2, // High DPI rendering
       useCORS: true,
+      allowTaint: false,
       logging: false,
       backgroundColor: '#ffffff', // Neutral print background
       windowWidth: 800,
