@@ -18,6 +18,21 @@ interface MarkdownRendererProps {
   media?: MessageMedia[];
 }
 
+const allowedUrlProtocols = ['http:', 'https:', 'mailto:'];
+
+function transformMarkdownUrl(url: string): string {
+  if (url.startsWith('data:image/') || url.startsWith('blob:')) {
+    return url;
+  }
+
+  try {
+    const parsedUrl = new URL(url, window.location.href);
+    return allowedUrlProtocols.includes(parsedUrl.protocol) ? url : '';
+  } catch {
+    return '';
+  }
+}
+
 /**
  * A single image with error handling and click-to-zoom.
  */
@@ -45,7 +60,7 @@ const ChatImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
         src={src}
         alt={alt}
         className="chat-image"
-        loading="lazy"
+        loading="eager"
         onClick={() => setZoomed(true)}
         onError={handleError}
       />
@@ -141,7 +156,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, med
 
   return (
     <div className="markdown-body">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={components}
+        urlTransform={transformMarkdownUrl}
+      >
         {content}
       </ReactMarkdown>
 

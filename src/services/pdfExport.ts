@@ -11,7 +11,7 @@ function waitForImages(element: HTMLElement, timeoutMs: number = 5000): Promise<
   if (images.length === 0) return Promise.resolve();
 
   const imagePromises = images.map((img) => {
-    if (img.complete && img.naturalWidth > 0) {
+    if (img.complete) {
       return Promise.resolve();
     }
     return new Promise<void>((resolve) => {
@@ -61,11 +61,6 @@ export async function exportToPDF(element: HTMLElement, filename: string = 'llm-
       windowWidth: 800,
     });
 
-    // Restore original CSS layout styles
-    element.style.width = originalWidth;
-    element.style.maxWidth = originalMaxWidth;
-    element.style.overflow = originalOverflow;
-
     // PDF configuration (A4 paper dimensions: 210mm x 297mm)
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pdfWidth = 210;
@@ -97,12 +92,13 @@ export async function exportToPDF(element: HTMLElement, filename: string = 'llm-
 
     pdf.save(filename);
   } catch (error) {
-    // Make sure styles are restored even if generation crashes
+    console.error('PDF export failed:', error);
+    throw error;
+  } finally {
+    // Make sure styles are restored after success, cancellation, or failure.
     element.style.width = originalWidth;
     element.style.maxWidth = originalMaxWidth;
     element.style.overflow = originalOverflow;
-    console.error('PDF export failed:', error);
-    throw error;
   }
 }
 export default exportToPDF;
