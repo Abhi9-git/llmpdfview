@@ -1,6 +1,66 @@
 import type { MessageMedia } from '../types';
 
 /**
+ * Extract text from a DOM element, preserving line breaks.
+ * Unlike `textContent`, this properly converts `<br>` tags and
+ * block-level element boundaries to newline characters.
+ * Essential for ASCII-art flowcharts and preformatted text that LLMs
+ * render using `<br>` tags rather than literal newline characters.
+ */
+function extractPreformattedText(el: Element): string {
+  const parts: string[] = [];
+
+  const walk = (node: Node): void => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      parts.push(node.textContent || '');
+      return;
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+    const elem = node as Element;
+    const tag = elem.tagName.toUpperCase();
+
+    // <br> → newline
+    if (tag === 'BR') {
+      parts.push('\n');
+      return;
+    }
+
+    // Block-level elements get newlines before/after their content
+    const isBlock = [
+      'DIV', 'P', 'LI', 'TR', 'SECTION', 'ARTICLE',
+      'HEADER', 'FOOTER', 'BLOCKQUOTE', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6'
+    ].includes(tag);
+
+    if (isBlock && parts.length > 0) {
+      // Only add newline if the last part doesn't already end with one
+      const last = parts[parts.length - 1];
+      if (last && !last.endsWith('\n')) {
+        parts.push('\n');
+      }
+    }
+
+    for (let i = 0; i < elem.childNodes.length; i++) {
+      walk(elem.childNodes[i]);
+    }
+
+    if (isBlock) {
+      const last = parts[parts.length - 1];
+      if (last && !last.endsWith('\n')) {
+        parts.push('\n');
+      }
+    }
+  };
+
+  for (let i = 0; i < el.childNodes.length; i++) {
+    walk(el.childNodes[i]);
+  }
+
+  return parts.join('');
+}
+
+/**
  * Convert a DOM element tree to Markdown text.
  * Now also converts <img> elements to markdown image syntax
  * and <svg> elements to inline data-URI images.
@@ -47,7 +107,7 @@ export function elementToMarkdown(element: Element): string {
     // --- MERMAID DIAGRAM HANDLING ---
     // Detect mermaid containers: <pre class="mermaid">, <div class="mermaid">, etc.
     if (isMermaidElement(el)) {
-      const mermaidSource = el.textContent?.trim() || '';
+      const mermaidSource = extractPreformattedText(el).trim();
       if (mermaidSource) {
         return `\n\n\`\`\`mermaid\n${mermaidSource}\n\`\`\`\n\n`;
       }
@@ -61,10 +121,13 @@ export function elementToMarkdown(element: Element): string {
         const classes = Array.from(codeEl.classList);
         const langClass = classes.find((c) => c.startsWith('language-'));
         const lang = langClass ? langClass.replace('language-', '') : '';
-        const codeText = codeEl.textContent || '';
+        // Use extractPreformattedText to preserve <br> line breaks
+        const codeText = extractPreformattedText(codeEl);
         return `\n\`\`\`${lang}\n${codeText.trim()}\n\`\`\`\n`;
       }
-      return `\n\`\`\`\n${el.textContent?.trim()}\n\`\`\`\n`;
+      // Use extractPreformattedText to preserve <br> line breaks
+      const preText = extractPreformattedText(el);
+      return `\n\`\`\`\n${preText.trim()}\n\`\`\`\n`;
     }
 
     if (tagName === 'CODE') {
