@@ -679,9 +679,22 @@ pre[class*="language-"] {
    SVG Diagram Display
    ========================================================================== */
 .markdown-body img[src^="data:image/svg"] {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
   background: var(--paper-color);
   padding: 16px;
   border: 1px solid var(--border-color);
   border-radius: 10px;
+  box-sizing: border-box;
+  object-fit: contain;
+}
+
+/* Override .chat-image constraints for SVG diagrams (flowcharts, architecture diagrams)
+   so they render at full container width instead of being squeezed to 50% */
+img.chat-image[src^="data:image/svg"] {
+  max-width: 100%;
+  width: auto;
 }
 

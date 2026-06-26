@@ -203,7 +203,20 @@ export function extractMedia(element: Element): MessageMedia[] {
 
     if (isLikelySvgIcon) return;
 
-    const svgMarkup = new XMLSerializer().serializeToString(svg);
+    // Clone and normalise the SVG for responsive rendering
+    const clone = svg.cloneNode(true) as SVGSVGElement;
+    if (!clone.getAttribute('viewBox')) {
+      const w = parseFloat(width || '') || svg.getBBox?.()?.width || 800;
+      const h = parseFloat(height || '') || svg.getBBox?.()?.height || 600;
+      clone.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    }
+    clone.removeAttribute('width');
+    clone.removeAttribute('height');
+    if (!clone.getAttribute('preserveAspectRatio')) {
+      clone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    }
+
+    const svgMarkup = new XMLSerializer().serializeToString(clone);
     const dataUri = svgToDataUri(svgMarkup);
     if (seen.has(dataUri)) return;
 
@@ -221,6 +234,8 @@ export function extractMedia(element: Element): MessageMedia[] {
 
 /**
  * Convert an SVG element to a markdown image with a data URI.
+ * Normalises the SVG so it scales responsively (removes hardcoded
+ * width/height, ensures a viewBox exists, and sets preserveAspectRatio).
  */
 function svgToMarkdownImage(svgEl: Element): string {
   // Skip small icon SVGs
@@ -230,11 +245,34 @@ function svgToMarkdownImage(svgEl: Element): string {
     return '';
   }
 
-  const svgMarkup = new XMLSerializer().serializeToString(svgEl);
+  // Clone so we don't mutate the live DOM
+  const clone = svgEl.cloneNode(true) as Element;
+
+  // Ensure a viewBox exists so the SVG scales correctly inside an <img>.
+  // Many LLM-generated flowcharts only have width/height but no viewBox,
+  // which causes distortion when the <img> container is narrower.
+  if (!clone.getAttribute('viewBox')) {
+    const w = parseFloat(width || '') || (svgEl as SVGSVGElement).getBBox?.()?.width || 800;
+    const h = parseFloat(height || '') || (svgEl as SVGSVGElement).getBBox?.()?.height || 600;
+    clone.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  }
+
+  // Remove fixed dimensions so the SVG fills its container width and
+  // the browser calculates height from the viewBox aspect ratio.
+  clone.removeAttribute('width');
+  clone.removeAttribute('height');
+
+  // Ensure the aspect ratio is preserved (centered, fit within container)
+  if (!clone.getAttribute('preserveAspectRatio')) {
+    clone.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+  }
+
+  const svgMarkup = new XMLSerializer().serializeToString(clone);
   const dataUri = svgToDataUri(svgMarkup);
   const alt = svgEl.getAttribute('aria-label') || 'diagram';
   return `\n\n![${alt}](${dataUri})\n\n`;
 }
+
 
 /**
  * Convert raw SVG markup string to a base64 data URI.
