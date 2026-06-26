@@ -77,6 +77,38 @@ const ChatImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
   );
 };
 
+/**
+ * Render an SVG inline in the DOM rather than as a sandboxed <img>.
+ * This preserves all internal styles, gradients, fonts, and transforms
+ * exactly as they appeared on the original LLM page.
+ */
+const InlineSvg: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const svgMarkup = React.useMemo(() => {
+    try {
+      if (src.startsWith('data:image/svg+xml;base64,')) {
+        const base64 = src.slice('data:image/svg+xml;base64,'.length);
+        return decodeURIComponent(escape(atob(base64)));
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, [src]);
+
+  if (!svgMarkup) {
+    return <ChatImage src={src} alt={alt} />;
+  }
+
+  return (
+    <div
+      className="svg-diagram-inline"
+      role="img"
+      aria-label={alt}
+      dangerouslySetInnerHTML={{ __html: svgMarkup }}
+    />
+  );
+};
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, media }) => {
   useEffect(() => {
     // Fallback highlight call to ensure DOM is highlighted after initial render
@@ -93,6 +125,10 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, med
     // Image component with error handling and zoom
     img: ({ src, alt, ...props }: React.ComponentPropsWithoutRef<'img'>) => {
       if (!src) return null;
+      // Render SVG data URIs inline for full visual fidelity
+      if (src.startsWith('data:image/svg+xml;base64,')) {
+        return <InlineSvg src={src} alt={alt || 'diagram'} />;
+      }
       return <ChatImage src={src} alt={alt || 'image'} {...props} />;
     },
     // Code block highlighting + Mermaid styled code blocks
@@ -168,7 +204,9 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, med
       {standaloneMedia.length > 0 && (
         <div className={`media-gallery ${standaloneMedia.length === 1 ? 'media-gallery-single' : ''}`}>
           {standaloneMedia.map((item, idx) => (
-            <ChatImage key={idx} src={item.src} alt={item.alt} />
+            item.type === 'svg' && item.src.startsWith('data:image/svg+xml;base64,')
+              ? <InlineSvg key={idx} src={item.src} alt={item.alt} />
+              : <ChatImage key={idx} src={item.src} alt={item.alt} />
           ))}
         </div>
       )}

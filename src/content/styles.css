@@ -698,3 +698,26 @@ img.chat-image[src^="data:image/svg"] {
   width: auto;
 }
 
+/* Inline SVG Diagram Container
+   SVGs rendered inline in the DOM (not as <img>) for full visual fidelity.
+   Preserves all styles, gradients, fonts, and transforms from the LLM page. */
+.svg-diagram-inline {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--paper-color);
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  margin: 16px 0;
+  box-sizing: border-box;
+}
+
+.svg-diagram-inline svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+

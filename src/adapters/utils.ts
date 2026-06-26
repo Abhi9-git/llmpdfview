@@ -205,6 +205,10 @@ export function extractMedia(element: Element): MessageMedia[] {
 
     // Clone and normalise the SVG for responsive rendering
     const clone = svg.cloneNode(true) as SVGSVGElement;
+
+    // Inline computed styles so the SVG is self-contained
+    inlineComputedStyles(svg, clone);
+
     if (!clone.getAttribute('viewBox')) {
       const w = parseFloat(width || '') || svg.getBBox?.()?.width || 800;
       const h = parseFloat(height || '') || svg.getBBox?.()?.height || 600;
@@ -248,6 +252,10 @@ function svgToMarkdownImage(svgEl: Element): string {
   // Clone so we don't mutate the live DOM
   const clone = svgEl.cloneNode(true) as Element;
 
+  // Inline computed styles from the live DOM so the SVG is visually
+  // self-contained (colours, fonts, strokes, etc. from the LLM page CSS).
+  inlineComputedStyles(svgEl, clone);
+
   // Ensure a viewBox exists so the SVG scales correctly inside an <img>.
   // Many LLM-generated flowcharts only have width/height but no viewBox,
   // which causes distortion when the <img> container is narrower.
@@ -280,6 +288,64 @@ function svgToMarkdownImage(svgEl: Element): string {
 function svgToDataUri(svgMarkup: string): string {
   const encoded = btoa(unescape(encodeURIComponent(svgMarkup)));
   return `data:image/svg+xml;base64,${encoded}`;
+}
+
+/**
+ * Inline computed styles from the live DOM onto a cloned SVG tree.
+ * This captures all styles applied by the LLM page's stylesheets (colours,
+ * fonts, strokes, transforms, etc.) so the SVG is fully self-contained.
+ */
+const SVG_STYLE_PROPERTIES = [
+  'fill', 'fill-opacity', 'fill-rule',
+  'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray',
+  'stroke-dashoffset', 'stroke-linecap', 'stroke-linejoin',
+  'opacity',
+  'font-family', 'font-size', 'font-weight', 'font-style',
+  'text-anchor', 'dominant-baseline', 'alignment-baseline',
+  'color', 'letter-spacing',
+  'transform',
+  'visibility', 'display',
+  'clip-path', 'mask',
+  'marker-start', 'marker-mid', 'marker-end',
+  'filter',
+] as const;
+
+function inlineComputedStyles(liveEl: Element, cloneEl: Element): void {
+  try {
+    const computed = window.getComputedStyle(liveEl);
+    const styleChunks: string[] = [];
+
+    for (const prop of SVG_STYLE_PROPERTIES) {
+      const value = computed.getPropertyValue(prop);
+      if (value && value !== '' && value !== 'none' && value !== 'normal') {
+        // Skip default/inherited values that would bloat the markup
+        if (prop === 'fill' && value === 'rgb(0, 0, 0)') continue;
+        if (prop === 'stroke' && value === 'none') continue;
+        if (prop === 'font-size' && value === '16px') continue;
+        if (prop === 'display' && value === 'inline') continue;
+        if (prop === 'visibility' && value === 'visible') continue;
+        if (prop === 'opacity' && value === '1') continue;
+        styleChunks.push(`${prop}:${value}`);
+      }
+    }
+
+    if (styleChunks.length > 0) {
+      // Preserve any existing inline styles
+      const existing = cloneEl.getAttribute('style') || '';
+      const merged = existing ? `${existing};${styleChunks.join(';')}` : styleChunks.join(';');
+      cloneEl.setAttribute('style', merged);
+    }
+  } catch {
+    // getComputedStyle may fail on detached elements — skip silently
+  }
+
+  // Recurse into child elements
+  const liveChildren = liveEl.children;
+  const cloneChildren = cloneEl.children;
+  const len = Math.min(liveChildren.length, cloneChildren.length);
+  for (let i = 0; i < len; i++) {
+    inlineComputedStyles(liveChildren[i], cloneChildren[i]);
+  }
 }
 
 /**
